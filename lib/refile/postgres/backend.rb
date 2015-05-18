@@ -9,18 +9,15 @@ module Refile
       PG_LARGE_OBJECT_TABLE = "pg_largeobject"
       READ_CHUNK_SIZE = 3000
 
-      def initialize(connection, max_size: nil, namespace: DEFAULT_NAMESPACE, registry_table: DEFAULT_REGISTRY_TABLE)
-        unless connection.is_a?(PG::Connection)
-          raise ArgumentError.new("First argument should be an instance of PG::Connection. When using ActiveRecord it is available as ActiveRecord::Base.connection.raw_connection")
-        end
-        @connection = connection
+      def initialize(connection_or_proc, max_size: nil, namespace: DEFAULT_NAMESPACE, registry_table: DEFAULT_REGISTRY_TABLE)
+        @connection_factory = connection_or_proc.respond_to?(:call) ? connection_or_proc : proc { connection_or_proc }
         @namespace = namespace.to_s
         @registry_table = registry_table
         @registry_table_validated = false
         @max_size = max_size
       end
 
-      attr_reader :connection, :namespace, :max_size
+      attr_reader :namespace, :max_size
 
       def registry_table
         unless @registry_table_validated
@@ -35,6 +32,11 @@ module Refile
           @registry_table_validated = true
         end
         @registry_table
+      end
+
+      def connection
+        @connection = nil if @connection && @connection.finished?
+        @connection ||= @connection_factory.call
       end
 
       verify_uploadable def upload(uploadable)

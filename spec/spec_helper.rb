@@ -3,11 +3,15 @@ $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
 require "refile/spec_helper"
 require "pg"
 require "refile/postgres"
+require 'dotenv'
+
+Dotenv.load
+
+CONNECTION_FACTORY = proc { PG.connect(ENV['DATABASE_URL']) }
 
 RSpec.configure do |config|
   config.before(:all) do
-    DB_NAME = 'refile_test'
-    connection = PG.connect(dbname: DB_NAME)
+    connection = CONNECTION_FACTORY.call
     connection.exec %{ DROP TABLE IF EXISTS #{Refile::Postgres::Backend::DEFAULT_REGISTRY_TABLE} CASCADE; }
     connection.exec %{
       CREATE TABLE IF NOT EXISTS #{Refile::Postgres::Backend::DEFAULT_REGISTRY_TABLE}
